@@ -24,14 +24,6 @@ const (
 
 type childrenState byte
 
-type pixelPlacement struct {
-  x int
-  y int
-  r int
-  g int
-  b int
-}
-
 type superColor struct {
   location *octTree
   x        int
@@ -259,7 +251,7 @@ func (tree *octTree) findNearestColorInTree(nom *superColor, nearest *superColor
   return nearest
 }
 
-func setPixel(output chan pixelPlacement, placements bitarray.BitArray, width int, height int, col *superColor, tree *octTree, r int) {
+func setPixel(img *image.RGBA, placements bitarray.BitArray, width int, height int, col *superColor, tree *octTree, r int) {
   set := false
 
   var openSpaces [8][2]int
@@ -307,14 +299,14 @@ func setPixel(output chan pixelPlacement, placements bitarray.BitArray, width in
 
       placement := r % numOpen
 
-      // send to output
-      output <- pixelPlacement{
-        x: openSpaces[placement][0],
-        y: openSpaces[placement][1],
-        r: col.r,
-        g: col.g,
-        b: col.b,
+      rgba := color.RGBA{
+        R: uint8(col.r),
+        G: uint8(col.g),
+        B: uint8(col.b),
+        A: 255,
       }
+
+      img.SetRGBA(openSpaces[placement][0], openSpaces[placement][1], rgba)
 
       col.x = openSpaces[placement][0]
       col.y = openSpaces[placement][1]
@@ -323,20 +315,6 @@ func setPixel(output chan pixelPlacement, placements bitarray.BitArray, width in
 
       tree.putColorInTree(col)
     }
-  }
-}
-
-func setColors(img *image.RGBA, input chan pixelPlacement) {
-  for placement := range input {
-
-    rgba := color.RGBA{
-      R: uint8(placement.r),
-      G: uint8(placement.g),
-      B: uint8(placement.b),
-      A: 255,
-    }
-
-    img.SetRGBA(placement.x, placement.y, rgba)
   }
 }
 
@@ -396,10 +374,6 @@ func main() {
   img.SetRGBA(firstX, firstY, rgba)
   placements.SetBit(uint64(4096*firstX + firstY))
 
-  pixelChannel := make(chan pixelPlacement, 1000)
-
-  go setColors(img, pixelChannel)
-
   firstColor.x = firstX
   firstColor.y = firstY
 
@@ -412,10 +386,8 @@ func main() {
     colors[i] = colors[r]
     colors[r] = temp
 
-    setPixel(pixelChannel, placements, width, height, colors[i], &root, r)
+    setPixel(img, placements, width, height, colors[i], &root, r)
   }
-
-  close(pixelChannel)
 
   f, _ := os.Create("allcolors.png")
   png.Encode(f, img)
