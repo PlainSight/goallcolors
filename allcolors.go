@@ -11,7 +11,7 @@ import (
   "time"
 )
 
-const arraysize = 32
+const arraysize = 128
 
 const (
   no          childrenState = 0
@@ -363,6 +363,11 @@ func main() {
     setPixel(placements, colors[i], &root, i*19)
   }
 
+  elapsed := time.Since(startTime)
+  fmt.Printf("Generation took %s\n", elapsed)
+
+  fmt.Printf("Writing to file...\n")
+
   rec := image.Rect(0, 0, width, height)
   img := image.NewRGBA(rec)
 
@@ -382,7 +387,4 @@ func main() {
   f, _ := os.Create("allcolors.png")
   png.Encode(f, img)
   f.Close()
-
-  elapsed := time.Since(startTime)
-  fmt.Printf("Generation took %s", elapsed)
 }
