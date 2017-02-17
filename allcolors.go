@@ -248,7 +248,7 @@ func (tree *octTree) findNearestColorInTree(nom *superColor, nearest *superColor
   return nearest
 }
 
-func setPixel(img *image.RGBA, placements bitarray.BitArray, width int, height int, col *superColor, tree *octTree, r int) {
+func setPixel(placements bitarray.BitArray, col *superColor, tree *octTree, r int) {
   set := false
 
   var openSpaces [8][2]int
@@ -263,14 +263,14 @@ func setPixel(img *image.RGBA, placements bitarray.BitArray, width int, height i
     if minx < 0 {
       minx = 0
     }
-    if maxx >= width {
-      maxx = width - 1
+    if maxx >= 4096 {
+      maxx = 4095
     }
     if miny < 0 {
       miny = 0
     }
-    if maxy >= height {
-      maxy = height - 1
+    if maxy >= 4096 {
+      maxy = 4095
     }
 
     numOpen := 0
@@ -302,15 +302,6 @@ func setPixel(img *image.RGBA, placements bitarray.BitArray, width int, height i
       placements.SetBit(uint64(4096*col.x + col.y))
 
       tree.putColorInTree(col)
-
-      rgba := color.RGBA{
-        R: uint8(col.r),
-        G: uint8(col.g),
-        B: uint8(col.b),
-        A: 255,
-      }
-
-      img.SetRGBA(col.x, col.y, rgba)
     }
   }
 }
@@ -318,6 +309,12 @@ func setPixel(img *image.RGBA, placements bitarray.BitArray, width int, height i
 func main() {
 
   startTime := time.Now()
+
+  rand.Seed(time.Now().UTC().UnixNano())
+
+  const width int = 4096
+  const height int = 4096
+  const todo int = width * height
 
   root := octTree{
     minx:   0,
@@ -329,9 +326,11 @@ func main() {
     parent: nil,
   }
 
-  var colors [256 * 256 * 256]*superColor
+  var colors [todo]*superColor
 
-  for i := 0; i < 256*256*256; i++ {
+  fmt.Printf("Created colors...\n")
+
+  for i := 0; i < todo; i++ {
     c := superColor{
       r: i & 0x00FF0000 >> 16,
       g: i & 0x0000FF00 >> 8,
@@ -340,31 +339,23 @@ func main() {
     colors[i] = &c
   }
 
-  width := 4096
-  height := 4096
+  fmt.Printf("Shuffling colors...\n")
 
-  todo := width * height
+  for i := 0; i < todo; i++ {
+    r := i + rand.Intn(todo-i)
+
+    *colors[i], *colors[r] = *colors[r], *colors[i]
+  }
+
+  fmt.Printf("Generating image...\n")
 
   placements := bitarray.NewBitArray(uint64(todo))
-
-  fmt.Printf("Created colors...\n")
-
-  rec := image.Rect(0, 0, width, height)
-  img := image.NewRGBA(rec)
 
   firstX := width / 2
   firstY := height / 2
 
   firstColor := colors[0]
 
-  rgba := color.RGBA{
-    R: uint8(firstColor.r),
-    G: uint8(firstColor.g),
-    B: uint8(firstColor.b),
-    A: 255,
-  }
-
-  img.SetRGBA(firstX, firstY, rgba)
   placements.SetBit(uint64(4096*firstX + firstY))
 
   firstColor.x = firstX
@@ -373,13 +364,23 @@ func main() {
   root.putColorInTree(firstColor)
 
   for i := 1; i < todo; i++ {
-    r := rand.Intn((256 * 256 * 256) - i)
+    setPixel(placements, colors[i], &root, i*19)
+  }
 
-    temp := colors[i]
-    colors[i] = colors[r]
-    colors[r] = temp
+  rec := image.Rect(0, 0, width, height)
+  img := image.NewRGBA(rec)
 
-    setPixel(img, placements, width, height, colors[i], &root, r)
+  for i := 0; i < todo; i++ {
+    col := colors[i]
+
+    rgba := color.RGBA{
+      R: uint8(col.r),
+      G: uint8(col.g),
+      B: uint8(col.b),
+      A: 255,
+    }
+
+    img.SetRGBA(col.x, col.y, rgba)
   }
 
   f, _ := os.Create("allcolors.png")
