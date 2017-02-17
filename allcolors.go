@@ -351,15 +351,11 @@ func main() {
 
   placements := bitarray.NewBitArray(uint64(todo))
 
-  firstX := width / 2
-  firstY := height / 2
-
   firstColor := colors[0]
+  firstColor.x = width / 2
+  firstColor.y = height / 2
 
-  placements.SetBit(uint64(4096*firstX + firstY))
-
-  firstColor.x = firstX
-  firstColor.y = firstY
+  placements.SetBit(uint64(4096*firstColor.x + firstColor.y))
 
   root.putColorInTree(firstColor)
 
