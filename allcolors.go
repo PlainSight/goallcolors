@@ -6,10 +6,7 @@ import (
   "image"
   "image/color"
   "image/png"
-  "log"
   "math/rand"
-  "net/http"
-  _ "net/http/pprof"
   "os"
   "time"
 )
@@ -299,6 +296,13 @@ func setPixel(img *image.RGBA, placements bitarray.BitArray, width int, height i
 
       placement := r % numOpen
 
+      col.x = openSpaces[placement][0]
+      col.y = openSpaces[placement][1]
+
+      placements.SetBit(uint64(4096*col.x + col.y))
+
+      tree.putColorInTree(col)
+
       rgba := color.RGBA{
         R: uint8(col.r),
         G: uint8(col.g),
@@ -306,23 +310,12 @@ func setPixel(img *image.RGBA, placements bitarray.BitArray, width int, height i
         A: 255,
       }
 
-      img.SetRGBA(openSpaces[placement][0], openSpaces[placement][1], rgba)
-
-      col.x = openSpaces[placement][0]
-      col.y = openSpaces[placement][1]
-
-      placements.SetBit(uint64(4096*col.x + col.y))
-
-      tree.putColorInTree(col)
+      img.SetRGBA(col.x, col.y, rgba)
     }
   }
 }
 
 func main() {
-
-  go func() {
-    log.Println(http.ListenAndServe("localhost:6060", nil))
-  }()
 
   startTime := time.Now()
 
